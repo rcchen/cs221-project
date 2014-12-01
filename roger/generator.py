@@ -45,7 +45,9 @@ def generateDistortions(base):
             [(50, 50 + j), (350, 80), (350, 220), (50, 300 - j)],
             [(0, 0), (400, 0), (400, 400), (0, 400)])
         result = image.transform((width, height), Image.PERSPECTIVE, coefficients, Image.BICUBIC)
-        result.save(constants.SHARED_TRAIN_PATH + base + "_skew_" + str(i) + ".png")
+        fff = Image.new('RGBA', image.size, (255, 255, 255, 255))
+        out = Image.composite(result, fff, result)
+        out.save(constants.SHARED_TRAIN_PATH + base + "_skew_" + str(i) + ".png")
 
 font = ImageFont.truetype(constants.SHARED_FONT_PATH + "collegeb.ttf", 400)
 for i in xrange(NUM_DIGITS):

@@ -25,7 +25,7 @@ def find_coeffs(pa, pb):
 def generateImage(text, font):
     image = Image.new("RGBA", (IMAGE_SIZE, IMAGE_SIZE), (255, 255, 255))
     draw = ImageDraw.Draw(image)
-    draw.text((100, 0), text, (0, 0, 0), font = font)
+    draw.text((25, 0), text, (0, 0, 0), font = font)
     draw = ImageDraw.Draw(image)
     image.save(constants.SHARED_TRAIN_PATH + text + ".png")
 
@@ -48,7 +48,7 @@ def generateDistortions(base):
         result = image.transform((width, height), Image.PERSPECTIVE, coefficients, Image.BICUBIC)
         result.save(constants.SHARED_TRAIN_PATH + base + "_skew_" + str(i) + ".png")
 
-font = ImageFont.truetype(constants.SHARED_FONT_PATH + "collegeb.ttf", IMAGE_SIZE)
+font = ImageFont.truetype(constants.SHARED_FONT_PATH + "collegeb.ttf", 100)
 for i in xrange(NUM_DIGITS):
     digit = str(i)
     generateImage(digit, font)

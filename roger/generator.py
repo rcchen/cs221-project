@@ -7,6 +7,7 @@ import constants
 
 NUM_DIGITS = 10
 ANGLE_RANGE = 45
+IMAGE_SIZE = 100
 
 # Taken from http://stackoverflow.com/questions/14177744/how-does-perspective-transformation-work-in-pil
 def find_coeffs(pa, pb):
@@ -22,7 +23,7 @@ def find_coeffs(pa, pb):
     return numpy.array(res).reshape(8)
 
 def generateImage(text, font):
-    image = Image.new("RGBA", (400, 400), (255, 255, 255))
+    image = Image.new("RGBA", (IMAGE_SIZE, IMAGE_SIZE), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     draw.text((100, 0), text, (0, 0, 0), font = font)
     draw = ImageDraw.Draw(image)
@@ -42,16 +43,16 @@ def generateDistortions(base):
     for i in xrange(20):
         j = i * -5
         coefficients = find_coeffs(
-            [(50, 50 + j), (350, 80), (350, 220), (50, 300 - j)],
-            [(0, 0), (400, 0), (400, 400), (0, 400)])
+            [(50, 50 + j), (350, 80), (350, 220), (IMAGE_SIZE * 0.125, IMAGE_SIZE * 0.75 - j)],
+            [(0, 0), (IMAGE_SIZE, 0), (IMAGE_SIZE, IMAGE_SIZE), (0, IMAGE_SIZE)])
         result = image.transform((width, height), Image.PERSPECTIVE, coefficients, Image.BICUBIC)
         fff = Image.new('RGBA', image.size, (255, 255, 255, 255))
         out = Image.composite(result, fff, result)
         out.save(constants.SHARED_TRAIN_PATH + base + "_skew_" + str(i) + ".png")
 
-font = ImageFont.truetype(constants.SHARED_FONT_PATH + "collegeb.ttf", 400)
+font = ImageFont.truetype(constants.SHARED_FONT_PATH + "collegeb.ttf", IMAGE_SIZE)
 for i in xrange(NUM_DIGITS):
     digit = str(i)
     generateImage(digit, font)
     generateRotations(digit)
-    generateDistortions(digit)
+    # generateDistortions(digit)

@@ -32,7 +32,9 @@ def generateRotations(base):
     image = Image.open(constants.SHARED_TRAIN_PATH + base + ".png")
     for i in xrange(-ANGLE_RANGE, ANGLE_RANGE):
         result = image.rotate(i)
-        result.save(constants.SHARED_TRAIN_PATH + base + "_" + str(i) + ".png")
+        fff = Image.new('RGBA', image.size, (255, 255, 255, 255))
+        out = Image.composite(result, fff, result)
+        out.save(constants.SHARED_TRAIN_PATH + base + "_" + str(i) + ".png")
 
 def generateDistortions(base):
     image = Image.open(constants.SHARED_TRAIN_PATH + base + ".png")

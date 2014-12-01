@@ -21,10 +21,28 @@ import numpy as np
 import cv2
 import os
 import random
+import itertools as it
 from numpy.linalg import norm
 
 SZ = 20 # size of each digit is SZ x SZ
 TRAIN_DIR = '../shared/train/'
+
+def grouper(n, iterable, fillvalue=None):
+    '''grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx'''
+    args = [iter(iterable)] * n
+    return it.izip_longest(fillvalue=fillvalue, *args)
+
+def mosaic(w, imgs):
+    '''Make a grid from images. 
+    w    -- number of grid columns
+    imgs -- images (must have same size and format)
+    '''
+    imgs = iter(imgs)
+    img0 = imgs.next()
+    pad = np.zeros_like(img0)
+    imgs = it.chain([img0], imgs)
+    rows = grouper(w, imgs, pad)
+    return np.vstack(map(np.hstack, rows))
 
 def split2d(img, cell_size, flatten=True):
     h, w = img.shape[:2]
@@ -148,7 +166,8 @@ if __name__ == '__main__':
     samples = preprocess_hog(digits2)
 
     train_n = int(0.9*len(samples))
-    # cv2.imshow('test set', mosaic(25, digits[train_n:]))
+    cv2.imshow('test set', mosaic(25, digits[train_n:]))
+    cv2.waitKey(0)
     digits_train, digits_test = np.split(digits2, [train_n])
     samples_train, samples_test = np.split(samples, [train_n])
     labels_train, labels_test = np.split(labels, [train_n])
@@ -159,5 +178,3 @@ if __name__ == '__main__':
     evaluate_model(model, digits_test, samples_test, labels_test)
     print 'saving SVM as "digits_svm.dat"...'
     model.save('digits_svm.dat')
-
-    cv2.waitKey(0)

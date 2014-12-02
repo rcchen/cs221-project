@@ -28,6 +28,7 @@ from numpy.linalg import norm
 SZ = 100 # size of each digit is SZ x SZ
 TRAIN_DIR = '../shared/train/'
 TEST_DIR = '../shared/test/'
+USE_TEST_DIR = False
 
 def grouper(n, iterable, fillvalue=None):
     '''grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx'''
@@ -46,22 +47,13 @@ def mosaic(w, imgs):
     rows = grouper(w, imgs, pad)
     return np.vstack(map(np.hstack, rows))
 
-def split2d(img, cell_size, flatten=True):
-    h, w = img.shape[:2]
-    sx, sy = cell_size
-    cells = [np.hsplit(row, w//sx) for row in np.vsplit(img, h//sy)]
-    cells = np.array(cells)
-    if flatten:
-        cells = cells.reshape(-1, sy, sx)
-    return cells
-
 def load_digits(directory):
     print 'loading "%s" ...' % directory
     digits = list()
     labels = list()
     for filename in os.listdir(directory):
         if not filename.endswith('.png'): continue
-        if 'skew' in filename: continue
+        # if 'skew' in filename: continue
         digit = cv2.imread(os.path.join(TRAIN_DIR, filename),
             cv2.CV_LOAD_IMAGE_GRAYSCALE)
         digits.append(digit)
@@ -183,26 +175,29 @@ def load_raw_data(use_test_dir):
 if __name__ == '__main__':
     print __doc__
 
-    digits_train, labels_train, digits_test, labels_test = load_raw_data(False)
+    digits_train, labels_train, digits_test, labels_test = load_raw_data(USE_TEST_DIR)
 
     print 'preprocessing...'
     digits_train = map(deskew, digits_train)
-    samples_train = preprocess_hog(digits_train)
-
     digits_test = map(deskew, digits_test)
-    samples_test = preprocess_hog(digits_test)
 
     print 'training KNearest...'
+    samples_train = preprocess_simple(digits_train)
+    samples_test = preprocess_simple(digits_test)
     model = KNearest(k=4)
     model.train(samples_train, labels_train)
     evaluate_model(model, digits_test, samples_test, labels_test)
 
     print 'training Random Forest...'
+    samples_train = preprocess_hog(digits_train)
+    samples_test = preprocess_hog(digits_test)
     model = RTree()
     model.train(samples_train, labels_train)
     evaluate_model(model, digits_test, samples_test, labels_test)
 
     print 'training SVM...'
+    samples_train = preprocess_hog(digits_train)
+    samples_test = preprocess_hog(digits_test)
     model = SVM(C=2.67, gamma=5.383)
     model.train(samples_train, labels_train)
     evaluate_model(model, digits_test, samples_test, labels_test)

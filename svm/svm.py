@@ -26,6 +26,7 @@ from numpy.linalg import norm
 
 SZ = 100 # size of each digit is SZ x SZ
 TRAIN_DIR = '../shared/train/'
+TEST_DIR = '../shared/test/'
 
 def grouper(n, iterable, fillvalue=None):
     '''grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx'''
@@ -33,7 +34,7 @@ def grouper(n, iterable, fillvalue=None):
     return it.izip_longest(fillvalue=fillvalue, *args)
 
 def mosaic(w, imgs):
-    '''Make a grid from images. 
+    '''Make a grid from images.
     w    -- number of grid columns
     imgs -- images (must have same size and format)
     '''
@@ -152,28 +153,16 @@ def preprocess_hog(digits):
 if __name__ == '__main__':
     print __doc__
 
-    sorted_digits, sorted_labels = load_digits(TRAIN_DIR)
+    digits_train, labels_train = load_digits(TRAIN_DIR)
+    digits_test, labels_test = load_digits(TEST_DIR)
 
     print 'preprocessing...'
     # shuffle digits
-    indices = range(len(sorted_digits))
-    random.shuffle(indices)
-    digits = list()
-    labels = list()
-    for i in indices:
-        digits.append(sorted_digits[i])
-        labels.append(sorted_labels[i])
+    digits_train = map(deskew, digits_train)
+    samples_train = preprocess_hog(digits_train)
 
-    digits2 = map(deskew, digits)
-    samples = preprocess_hog(digits2)
-    # samples = preprocess_simple(digits2)
-
-    train_n = int(0.9*len(samples))
-    # cv2.imshow('test set', mosaic(25, digits[train_n:]))
-    # cv2.waitKey(0)
-    digits_train, digits_test = np.split(digits2, [train_n])
-    samples_train, samples_test = np.split(samples, [train_n])
-    labels_train, labels_test = np.split(labels, [train_n])
+    digits_test = map(deskew, digits_test)
+    samples_test = preprocess_hog(digits_test)
 
     print 'training KNearest...'
     model = KNearest(k=4)

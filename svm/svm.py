@@ -28,7 +28,7 @@ from numpy.linalg import norm
 SZ = 100 # size of each digit is SZ x SZ
 TRAIN_DIR = '../shared/train/'
 TEST_DIR = '../shared/test/'
-USE_TEST_DIR = False
+USE_TEST_DIR = True
 
 def grouper(n, iterable, fillvalue=None):
     '''grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx'''
@@ -52,10 +52,12 @@ def load_digits(directory):
     digits = list()
     labels = list()
     for filename in os.listdir(directory):
-        if not filename.endswith('.png'): continue
+        # if not filename.endswith('.png'): continue
         # if 'skew' in filename: continue
-        digit = cv2.imread(os.path.join(TRAIN_DIR, filename),
+        digit = cv2.imread(os.path.join(directory, filename),
             cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        if digit is None:
+            print filename
         digits.append(digit)
         labels.append(int(filename[0]))
     return digits, labels
@@ -82,7 +84,7 @@ class KNearest(StatModel):
 
     def train(self, samples, responses):
         self.model = cv2.KNearest()
-        self.model.train(samples, responses)
+        self.model.train(samples, np.array(responses))
 
     def predict(self, samples):
         retval, results, neigh_resp, dists = self.model.find_nearest(samples, self.k)
@@ -107,7 +109,7 @@ class RTree(StatModel):
 
   def train(self, samples, responses):
     self.model = cv2.RTrees()
-    self.model.train(samples, cv2.CV_ROW_SAMPLE, responses)
+    self.model.train(samples, cv2.CV_ROW_SAMPLE, np.array(responses))
 
   def predict(self, samples):
     return [self.model.predict(sample) for sample in samples]
@@ -155,7 +157,7 @@ def load_raw_data(use_test_dir):
     if use_test_dir:
         digits_train, labels_train = load_digits(TRAIN_DIR)
         digits_test, labels_test = load_digits(TEST_DIR)
-        return digits_train, labels_train, digits_test, labels_test
+        return digits_train, np.array(labels_train), digits_test, np.array(labels_test)
     else:
         sorted_digits, sorted_labels = load_digits(TRAIN_DIR)
         # shuffle digits

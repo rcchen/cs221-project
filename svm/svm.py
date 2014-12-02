@@ -4,7 +4,7 @@ Sample loads a dataset of handwritten digits from '../shared/train/'.
 Then it trains and evaluates an SVM.
 Following preprocessing is applied to the dataset:
  - Moment-based image deskew (see deskew())
- - Digit images are split into 4 10x10 cells and 16-bin
+ - Digit images are split into 4 200x200 cells and 16-bin
    histogram of oriented gradients is computed for each
    cell
  - Transform histograms to space with Hellinger metric (see [1] (RootSIFT))
@@ -21,10 +21,29 @@ import numpy as np
 import cv2
 import os
 import random
+import itertools as it
 from numpy.linalg import norm
 
-SZ = 20 # size of each digit is SZ x SZ
+SZ = 100 # size of each digit is SZ x SZ
 TRAIN_DIR = '../shared/train/'
+TEST_DIR = '../shared/test/'
+
+def grouper(n, iterable, fillvalue=None):
+    '''grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx'''
+    args = [iter(iterable)] * n
+    return it.izip_longest(fillvalue=fillvalue, *args)
+
+def mosaic(w, imgs):
+    '''Make a grid from images.
+    w    -- number of grid columns
+    imgs -- images (must have same size and format)
+    '''
+    imgs = iter(imgs)
+    img0 = imgs.next()
+    pad = np.zeros_like(img0)
+    imgs = it.chain([img0], imgs)
+    rows = grouper(w, imgs, pad)
+    return np.vstack(map(np.hstack, rows))
 
 def split2d(img, cell_size, flatten=True):
     h, w = img.shape[:2]
@@ -41,6 +60,7 @@ def load_digits(directory):
     labels = list()
     for filename in os.listdir(directory):
         if not filename.endswith('.png'): continue
+        if 'skew' in filename: continue
         digit = cv2.imread(os.path.join(TRAIN_DIR, filename),
             cv2.CV_LOAD_IMAGE_GRAYSCALE)
         digits.append(digit)
@@ -114,8 +134,9 @@ def preprocess_hog(digits):
         mag, ang = cv2.cartToPolar(gx, gy)
         bin_n = 16
         bin = np.int32(bin_n*ang/(2*np.pi))
-        bin_cells = bin[:10,:10], bin[10:,:10], bin[:10,10:], bin[10:,10:]
-        mag_cells = mag[:10,:10], mag[10:,:10], mag[:10,10:], mag[10:,10:]
+        bin_w = SZ / 2
+        bin_cells = bin[:bin_w,:bin_w], bin[bin_w:,:bin_w], bin[:bin_w,bin_w:], bin[bin_w:,bin_w:]
+        mag_cells = mag[:bin_w,:bin_w], mag[bin_w:,:bin_w], mag[:bin_w,bin_w:], mag[bin_w:,bin_w:]
         hists = [np.bincount(b.ravel(), m.ravel(), bin_n) for b, m in zip(bin_cells, mag_cells)]
         hist = np.hstack(hists)
 
@@ -132,26 +153,21 @@ def preprocess_hog(digits):
 if __name__ == '__main__':
     print __doc__
 
-    sorted_digits, sorted_labels = load_digits(TRAIN_DIR)
+    digits_train, labels_train = load_digits(TRAIN_DIR)
+    digits_test, labels_test = load_digits(TEST_DIR)
 
     print 'preprocessing...'
     # shuffle digits
-    indices = range(len(sorted_digits))
-    random.shuffle(indices)
-    digits = list()
-    labels = list()
-    for i in indices:
-        digits.append(sorted_digits[i])
-        labels.append(sorted_labels[i])
+    digits_train = map(deskew, digits_train)
+    samples_train = preprocess_hog(digits_train)
 
-    digits2 = map(deskew, digits)
-    samples = preprocess_hog(digits2)
+    digits_test = map(deskew, digits_test)
+    samples_test = preprocess_hog(digits_test)
 
-    train_n = int(0.9*len(samples))
-    # cv2.imshow('test set', mosaic(25, digits[train_n:]))
-    digits_train, digits_test = np.split(digits2, [train_n])
-    samples_train, samples_test = np.split(samples, [train_n])
-    labels_train, labels_test = np.split(labels, [train_n])
+    print 'training KNearest...'
+    model = KNearest(k=4)
+    model.train(samples_train, labels_train)
+    evaluate_model(model, digits_test, samples_test, labels_test)
 
     print 'training SVM...'
     model = SVM(C=2.67, gamma=5.383)
@@ -159,5 +175,3 @@ if __name__ == '__main__':
     evaluate_model(model, digits_test, samples_test, labels_test)
     print 'saving SVM as "digits_svm.dat"...'
     model.save('digits_svm.dat')
-
-    cv2.waitKey(0)

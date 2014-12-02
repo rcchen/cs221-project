@@ -1,5 +1,6 @@
 '''
-SVM and KNearest digit recognition.
+SVM, KNearest, and Random Forest digit recognition.
+
 Sample loads a dataset of handwritten digits from '../shared/train/'.
 Then it trains and evaluates an SVM.
 Following preprocessing is applied to the dataset:
@@ -110,6 +111,14 @@ class SVM(StatModel):
     def predict(self, samples):
         return self.model.predict_all(samples).ravel()
 
+class RTree(StatModel):
+
+  def train(self, samples, responses):
+    self.model = cv2.RTrees()
+    self.model.train(samples, cv2.CV_ROW_SAMPLE, responses)
+
+  def predict(self, samples):
+    return [self.model.predict(sample) for sample in samples]
 
 def evaluate_model(model, digits, samples, labels):
     resp = model.predict(samples)
@@ -150,14 +159,33 @@ def preprocess_hog(digits):
     return np.float32(samples)
 
 
+def load_raw_data(use_test_dir):
+    if use_test_dir:
+        digits_train, labels_train = load_digits(TRAIN_DIR)
+        digits_test, labels_test = load_digits(TEST_DIR)
+        return digits_train, labels_train, digits_test, labels_test
+    else:
+        sorted_digits, sorted_labels = load_digits(TRAIN_DIR)
+        # shuffle digits
+        rand = np.random.RandomState(321)
+        indices = range(len(sorted_digits))
+        random.shuffle(indices)
+        digits = list()
+        labels = list()
+        for i in indices:
+            digits.append(sorted_digits[i])
+            labels.append(sorted_labels[i])
+        train_n = int(0.9*len(sorted_digits))
+        digits_train, digits_test = np.split(digits, [train_n])
+        labels_train, labels_test = np.split(labels, [train_n])
+        return digits_train, labels_train, digits_test, labels_test
+
 if __name__ == '__main__':
     print __doc__
 
-    digits_train, labels_train = load_digits(TRAIN_DIR)
-    digits_test, labels_test = load_digits(TEST_DIR)
+    digits_train, labels_train, digits_test, labels_test = load_raw_data(False)
 
     print 'preprocessing...'
-    # shuffle digits
     digits_train = map(deskew, digits_train)
     samples_train = preprocess_hog(digits_train)
 
@@ -166,6 +194,11 @@ if __name__ == '__main__':
 
     print 'training KNearest...'
     model = KNearest(k=4)
+    model.train(samples_train, labels_train)
+    evaluate_model(model, digits_test, samples_test, labels_test)
+
+    print 'training Random Forest...'
+    model = RTree()
     model.train(samples_train, labels_train)
     evaluate_model(model, digits_test, samples_test, labels_test)
 

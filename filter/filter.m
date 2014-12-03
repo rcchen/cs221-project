@@ -1,4 +1,4 @@
-name = 'IMG_5716';
+name = 'web_11_17_58';
 orig = imread(name, 'jpg');
 name(regexp(name,'[_]'))=[];
 
@@ -9,7 +9,7 @@ normalized = imresize(orig, scale);
 
 % Increase contrast with RGB and HSV
 rgb_im = zeros(size(normalized), 'uint8');
-for ch = 1:size(normalized,3)
+for ch = 1:3
     channel = normalized(:,:,ch);
     rgb_im(:,:,ch) = imadjust(channel, stretchlim(channel), []);
 end
@@ -23,8 +23,8 @@ end
 % imshow(hsv_im);
 
 % Get rid of everything but the white and red parts of the picture
-white_thresh_min = [0.0, 0.0, 0.5]; % HSV min threshold for white
-white_thresh_max = [0.7, 0.3, 1.0]; % HSV max threshold for white
+white_thresh_min = [0.0, 0.0, 0.4]; % HSV min threshold for white
+white_thresh_max = [0.7, 0.6, 1.0]; % HSV max threshold for white
 red_thresh_min = [0.9, 0.6, 0.0]; % HSV min threshold for red
 red_thresh_max = [1.0, 1.0, 1.0]; % HSV max threshold for red
 white_blobs = zeros(size(normalized, 1), size(normalized, 2));
@@ -68,7 +68,7 @@ min_area = 500;
 denoised_white = bwareaopen(white_blobs, min_area);
 % figure(6);
 % imshow(denoised_white);
-%hold on
+% hold on
 
 % Getting each individual WHITE blob that's inside a RED blob
 rp_white = regionprops(denoised_white, 'BoundingBox');
@@ -93,7 +93,7 @@ for idx = 1:numel(rp_white)
         wh = [box(1) + box(3), box(2) + box(4)];
         if (rl <= wl)
             if (rh >= wh)
-                %rectangle('Position', boxes_white(idx,:), 'EdgeColor', 'yellow');
+                % rectangle('Position', boxes_white(idx,:), 'EdgeColor', 'yellow');
                 invert = ones(box(4), box(3));
                 for i = box(2):(box(2)+box(4))
                     for j = box(1):(box(1)+box(3))

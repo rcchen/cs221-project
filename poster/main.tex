@@ -110,9 +110,9 @@ The goal of this project is to evaluate various artificial intelligence techniqu
 We have two methods by which we acquire data.
 % The first is image pre-processing, which is done on the actual photos and is mostly used for our test set. The second is data generation, which is used for training data. We resort to data generation because there is no readily available corpus of training data for jersey number recognition
 
-{\bf Image pre-processing.} TODO Audrey! Describe your magic. And include a picture below showing pre- and post-processing. TODO Roger and Jenny should also talk about how to deal with rotations and skewing.
+{\bf Image pre-processing.} In this step, we take an image of the general crop area of the jersey, and attempt to detect the number. This is accomplished by locating pixels that fall within a "white" threshold, then finding the largest contiguous white region, and finally transforming its bounding rectangle to resemble the training data within a 200px square.
 
-{\bf Data generation.} Base images for the training data are created as black and white bitmaps from the numbers 0-9 in College font. This is accomplished with the Python Image Library (PIL).
+{\bf Data generation.} Base images for the training data are created as black and white bitmaps from the numbers 0-9 in College font. This is accomplished with the Python Image Library (PIL). They are then transformed through a variety of skews an
 
 TODO after Roger's finalized the data generation step, talk about how we rotate and skew images.
 
@@ -253,7 +253,7 @@ Let's include pretty pictures here, ok?
 
 \begin{block}{Analysis}
 
-Life is hard...
+Firstly, we find that digits can be reliably isolated from an arbitrary image through heuristic-based image processing. Secondly, we find that synthetic training data generated from a base font and skewed across a variety of transforms is appropriate as a training corpus for this jersey ORC task. When these two processes are chained together, we are able to identify players that are represented in a photo. 
 
 \end{block}
 

@@ -143,7 +143,7 @@ TODO after Roger's finalized the data generation step, talk about how we rotate 
 
 \begin{block}{Problem Definition}
 
-Our problem is to create a system which takes as input images and outputs a classification as a digit 0-9.
+Our problem is to create a system which takes as input images and outputs a classification as a digit 0-9. 
 
 Given this problem definition, we naturally looked to supervised learning algorithms.
 
@@ -195,13 +195,13 @@ Lorem ipsum dolor \textbf{sit amet}, consectetur adipiscing elit. Sed commodo mo
 
 \begin{block}{K-Nearest Neighbors}
 
-We used the k-nearest neighbors algorithm as a baseline.
+We used the k-nearest neighbors algorithm as a baseline. Our data were the raw images, so the k-nearest neighbors algorithm measured similarity in the 100x100 image space.
 
 \end{block}
 
 \begin{block}{Random Forest}
 
-We also used random forests.
+The random forest classification algorithm makes use of multiple trees from decision tree learning. Each tree is grown over a random subset of the data. An internal node of at ree represents an input feature, and the leaves are labeled with a distribution over the classes. The random forest approach returns the most common classification returned by any of its trees. 
 
 \end{block}
 
@@ -217,11 +217,11 @@ We also used random forests.
 
 \begin{block}{Support Vector Machines}
 
-TODO This is how an SVM works. We used the following features.
+A support vector machine is a linear classifier, where our main design decisions were made in choosing the feature representation and the kernel.
 
-\begin{itemize}
-\item Histogram of Oriented Gradients (HoG). We use the Sobel operator to compute the gradient. We divide the image into four bins and compute the histogram.
-\end{itemize}
+For the feature, we used Histogram of Oriented Gradients (HoG), which has been known to work well in digit recognition. We use the Sobel operator to compute the gradient of the image. We divide the image into four bins and compute the histogram. We experimented with different bin sizes, but since our images were already only 100x100 pixels, four bins seemed to work better than 16, etc.
+
+We are currently using the radial basis function $K(x_i, x_j) = \mbox{exp }(-\gamma \|x_i - x_j\|^2)$ for the kernel. We have experimented with polynomial kernels, but limited testing data prevents us from arguing strongly for one kernel over the other.
 
 \end{block}
 

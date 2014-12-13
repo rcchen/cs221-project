@@ -93,6 +93,7 @@ class KNearest(StatModel):
 class SVM(StatModel):
     def __init__(self, C = 1, gamma = 0.5):
         self.params = dict( kernel_type = cv2.SVM_RBF,
+                            # degree = 2,
                             svm_type = cv2.SVM_C_SVC,
                             C = C,
                             gamma = gamma )
@@ -107,9 +108,12 @@ class SVM(StatModel):
 
 class RTree(StatModel):
 
-  def train(self, samples, responses):
+  def __init__(self, params):
     self.model = cv2.RTrees()
-    self.model.train(samples, cv2.CV_ROW_SAMPLE, np.array(responses))
+    self.params = params
+
+  def train(self, samples, responses):
+    self.model.train(samples, cv2.CV_ROW_SAMPLE, np.array(responses), params = self.params)
 
   def predict(self, samples):
     return [self.model.predict(sample) for sample in samples]
@@ -135,11 +139,22 @@ def preprocess_hog(digits):
         gx = cv2.Sobel(img, cv2.CV_32F, 1, 0)
         gy = cv2.Sobel(img, cv2.CV_32F, 0, 1)
         mag, ang = cv2.cartToPolar(gx, gy)
-        bin_n = 16
+        # bin_n = 16
+        bin_n = 1024
         bin = np.int32(bin_n*ang/(2*np.pi))
-        bin_w = SZ / 2
-        bin_cells = bin[:bin_w,:bin_w], bin[bin_w:,:bin_w], bin[:bin_w,bin_w:], bin[bin_w:,bin_w:]
-        mag_cells = mag[:bin_w,:bin_w], mag[bin_w:,:bin_w], mag[:bin_w,bin_w:], mag[bin_w:,bin_w:]
+        n_rows = 2
+        n_cols = 2
+        bin_h = SZ / n_rows
+        bin_w = SZ / n_cols
+        bin_cells = list()
+        mag_cells = list()
+        for i in xrange(n_rows):
+            for j in xrange(n_cols):
+                bin_cells.append(bin[ (i-1)*bin_h : i*bin_h, (j-1)*bin_w : j*bin_w])
+                mag_cells.append(mag[ (i-1)*bin_h : i*bin_h, (j-1)*bin_w : j*bin_w])
+        # bin_w = SZ / 2
+        # bin_cells = [bin[:bin_w,:bin_w], bin[bin_w:,:bin_w], bin[:bin_w,bin_w:], bin[bin_w:,bin_w:]]
+        # mag_cells = [mag[:bin_w,:bin_w], mag[bin_w:,:bin_w], mag[:bin_w,bin_w:], mag[bin_w:,bin_w:]]
         hists = [np.bincount(b.ravel(), m.ravel(), bin_n) for b, m in zip(bin_cells, mag_cells)]
         hist = np.hstack(hists)
 
@@ -182,26 +197,31 @@ if __name__ == '__main__':
     print 'preprocessing...'
     digits_train = map(deskew, digits_train)
     digits_test = map(deskew, digits_test)
-
-    print 'training KNearest...'
-    samples_train = preprocess_simple(digits_train)
-    samples_test = preprocess_simple(digits_test)
-    model = KNearest(k=4)
-    model.train(samples_train, labels_train)
-    evaluate_model(model, digits_test, samples_test, labels_test)
+    
+    # for i in xrange(4, 20, 2):
+        # print 'knearest with k', i
+    # print 'training KNearest...'
+    # samples_train = preprocess_simple(digits_train)
+    # samples_test = preprocess_simple(digits_test)
+    # model = KNearest(k=4)
+    # model.train(samples_train, labels_train)
+    # evaluate_model(model, digits_test, samples_test, labels_test)
 
     print 'training Random Forest...'
     samples_train = preprocess_hog(digits_train)
     samples_test = preprocess_hog(digits_test)
-    model = RTree()
+    params = dict(max_depth = 10,
+        min_sample_count = 2,
+        max_num_of_trees_in_the_forest = 15)
+    model = RTree(params)
     model.train(samples_train, labels_train)
     evaluate_model(model, digits_test, samples_test, labels_test)
 
-    print 'training SVM...'
-    samples_train = preprocess_hog(digits_train)
-    samples_test = preprocess_hog(digits_test)
-    model = SVM(C=2.67, gamma=5.383)
-    model.train(samples_train, labels_train)
-    evaluate_model(model, digits_test, samples_test, labels_test)
-    print 'saving SVM as "digits_svm.dat"...'
-    model.save('digits_svm.dat')
+    # print 'training SVM...'
+    # samples_train = preprocess_hog(digits_train)
+    # samples_test = preprocess_hog(digits_test)
+    # model = SVM(C=2.67, gamma=5.383)
+    # model.train(samples_train, labels_train)
+    # evaluate_model(model, digits_test, samples_test, labels_test)
+    # print 'saving SVM as "digits_svm.dat"...'
+    # model.save('digits_svm.dat')

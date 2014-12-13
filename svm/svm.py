@@ -1,20 +1,6 @@
 '''
 SVM, KNearest, and Random Forest digit recognition.
 
-Sample loads a dataset of handwritten digits from '../shared/train/'.
-Then it trains and evaluates an SVM.
-Following preprocessing is applied to the dataset:
- - Moment-based image deskew (see deskew())
- - Digit images are split into 4 200x200 cells and 16-bin
-   histogram of oriented gradients is computed for each
-   cell
- - Transform histograms to space with Hellinger metric (see [1] (RootSIFT))
-[1] R. Arandjelovic, A. Zisserman
-    "Three things everyone should know to improve object retrieval"
-    http://www.robots.ox.ac.uk/~vgg/publications/2012/Arandjelovic12/arandjelovic12.pdf
-Usage:
-   python svm.py
-
 Taken from OpenCV source examples, modified for CS 221
 '''
 
@@ -52,12 +38,24 @@ def load_digits(directory):
     digits = list()
     labels = list()
     for filename in os.listdir(directory):
-        # if not filename.endswith('.png'): continue
-        # if 'skew' in filename: continue
+        # We have a directory of negative images, which don't correspond
+        # to any digit. We give them a label of -1.
+        # They are in the "junk" directory of the training data.
+        if filename == 'junk':
+            junkdir = os.path.join(directory, 'junk')
+            count = 0
+            for junkfile in os.listdir(junkdir):
+                count += 1
+                if count > 69: break
+                fullfilename = os.path.join(junkdir, junkfile)
+                digit = cv2.imread(fullfilename, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+                if digit is None:
+                    print fullfilename
+                digits.append(digit)
+                labels.append(-1)
+            continue
         digit = cv2.imread(os.path.join(directory, filename),
             cv2.CV_LOAD_IMAGE_GRAYSCALE)
-        if digit is None:
-            print filename
         digits.append(digit)
         labels.append(int(filename[0]))
     return digits, labels
@@ -93,6 +91,7 @@ class KNearest(StatModel):
 class SVM(StatModel):
     def __init__(self, C = 1, gamma = 0.5):
         self.params = dict( kernel_type = cv2.SVM_RBF,
+                            # degree = 2,
                             svm_type = cv2.SVM_C_SVC,
                             C = C,
                             gamma = gamma )
@@ -107,9 +106,12 @@ class SVM(StatModel):
 
 class RTree(StatModel):
 
-  def train(self, samples, responses):
+  def __init__(self, params):
     self.model = cv2.RTrees()
-    self.model.train(samples, cv2.CV_ROW_SAMPLE, np.array(responses))
+    self.params = params
+
+  def train(self, samples, responses):
+    self.model.train(samples, cv2.CV_ROW_SAMPLE, np.array(responses), params = self.params)
 
   def predict(self, samples):
     return [self.model.predict(sample) for sample in samples]
@@ -119,9 +121,9 @@ def evaluate_model(model, digits, samples, labels):
     err = (labels != resp).mean()
     print 'error: %.2f %%' % (err*100)
 
-    confusion = np.zeros((10, 10), np.int32)
+    confusion = np.zeros((11, 11), np.int32)
     for i, j in zip(labels, resp):
-        confusion[i, j] += 1
+        confusion[i+1, j+1] += 1
     print 'confusion matrix:'
     print confusion
     print
@@ -135,19 +137,30 @@ def preprocess_hog(digits):
         gx = cv2.Sobel(img, cv2.CV_32F, 1, 0)
         gy = cv2.Sobel(img, cv2.CV_32F, 0, 1)
         mag, ang = cv2.cartToPolar(gx, gy)
-        bin_n = 16
+        # bin_n = 16
+        bin_n = 1024
         bin = np.int32(bin_n*ang/(2*np.pi))
-        bin_w = SZ / 2
-        bin_cells = bin[:bin_w,:bin_w], bin[bin_w:,:bin_w], bin[:bin_w,bin_w:], bin[bin_w:,bin_w:]
-        mag_cells = mag[:bin_w,:bin_w], mag[bin_w:,:bin_w], mag[:bin_w,bin_w:], mag[bin_w:,bin_w:]
+        n_rows = 2
+        n_cols = 2
+        bin_h = SZ / n_rows
+        bin_w = SZ / n_cols
+        bin_cells = list()
+        mag_cells = list()
+        for i in xrange(n_rows):
+            for j in xrange(n_cols):
+                bin_cells.append(bin[ (i-1)*bin_h : i*bin_h, (j-1)*bin_w : j*bin_w])
+                mag_cells.append(mag[ (i-1)*bin_h : i*bin_h, (j-1)*bin_w : j*bin_w])
+        # bin_w = SZ / 2
+        # bin_cells = [bin[:bin_w,:bin_w], bin[bin_w:,:bin_w], bin[:bin_w,bin_w:], bin[bin_w:,bin_w:]]
+        # mag_cells = [mag[:bin_w,:bin_w], mag[bin_w:,:bin_w], mag[:bin_w,bin_w:], mag[bin_w:,bin_w:]]
         hists = [np.bincount(b.ravel(), m.ravel(), bin_n) for b, m in zip(bin_cells, mag_cells)]
         hist = np.hstack(hists)
 
         # transform to Hellinger kernel
-        eps = 1e-7
-        hist /= hist.sum() + eps
-        hist = np.sqrt(hist)
-        hist /= norm(hist) + eps
+        # eps = 1e-7
+        # hist /= hist.sum() + eps
+        # hist = np.sqrt(hist)
+        # hist /= norm(hist) + eps
 
         samples.append(hist)
     return np.float32(samples)
@@ -182,7 +195,7 @@ if __name__ == '__main__':
     print 'preprocessing...'
     digits_train = map(deskew, digits_train)
     digits_test = map(deskew, digits_test)
-
+    
     print 'training KNearest...'
     samples_train = preprocess_simple(digits_train)
     samples_test = preprocess_simple(digits_test)
@@ -193,7 +206,10 @@ if __name__ == '__main__':
     print 'training Random Forest...'
     samples_train = preprocess_hog(digits_train)
     samples_test = preprocess_hog(digits_test)
-    model = RTree()
+    params = dict(max_depth = 10,
+        min_sample_count = 2,
+        max_num_of_trees_in_the_forest = 15)
+    model = RTree(params)
     model.train(samples_train, labels_train)
     evaluate_model(model, digits_test, samples_test, labels_test)
 
@@ -203,5 +219,3 @@ if __name__ == '__main__':
     model = SVM(C=2.67, gamma=5.383)
     model.train(samples_train, labels_train)
     evaluate_model(model, digits_test, samples_test, labels_test)
-    print 'saving SVM as "digits_svm.dat"...'
-    model.save('digits_svm.dat')

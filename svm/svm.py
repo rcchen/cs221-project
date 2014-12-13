@@ -1,20 +1,6 @@
 '''
 SVM, KNearest, and Random Forest digit recognition.
 
-Sample loads a dataset of handwritten digits from '../shared/train/'.
-Then it trains and evaluates an SVM.
-Following preprocessing is applied to the dataset:
- - Moment-based image deskew (see deskew())
- - Digit images are split into 4 200x200 cells and 16-bin
-   histogram of oriented gradients is computed for each
-   cell
- - Transform histograms to space with Hellinger metric (see [1] (RootSIFT))
-[1] R. Arandjelovic, A. Zisserman
-    "Three things everyone should know to improve object retrieval"
-    http://www.robots.ox.ac.uk/~vgg/publications/2012/Arandjelovic12/arandjelovic12.pdf
-Usage:
-   python svm.py
-
 Taken from OpenCV source examples, modified for CS 221
 '''
 
@@ -52,12 +38,24 @@ def load_digits(directory):
     digits = list()
     labels = list()
     for filename in os.listdir(directory):
-        # if not filename.endswith('.png'): continue
-        # if 'skew' in filename: continue
+        # We have a directory of negative images, which don't correspond
+        # to any digit. We give them a label of -1.
+        # They are in the "junk" directory of the training data.
+        if filename == 'junk':
+            junkdir = os.path.join(directory, 'junk')
+            count = 0
+            for junkfile in os.listdir(junkdir):
+                count += 1
+                if count > 69: break
+                fullfilename = os.path.join(junkdir, junkfile)
+                digit = cv2.imread(fullfilename, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+                if digit is None:
+                    print fullfilename
+                digits.append(digit)
+                labels.append(-1)
+            continue
         digit = cv2.imread(os.path.join(directory, filename),
             cv2.CV_LOAD_IMAGE_GRAYSCALE)
-        if digit is None:
-            print filename
         digits.append(digit)
         labels.append(int(filename[0]))
     return digits, labels
@@ -123,9 +121,9 @@ def evaluate_model(model, digits, samples, labels):
     err = (labels != resp).mean()
     print 'error: %.2f %%' % (err*100)
 
-    confusion = np.zeros((10, 10), np.int32)
+    confusion = np.zeros((11, 11), np.int32)
     for i, j in zip(labels, resp):
-        confusion[i, j] += 1
+        confusion[i+1, j+1] += 1
     print 'confusion matrix:'
     print confusion
     print
@@ -159,10 +157,10 @@ def preprocess_hog(digits):
         hist = np.hstack(hists)
 
         # transform to Hellinger kernel
-        eps = 1e-7
-        hist /= hist.sum() + eps
-        hist = np.sqrt(hist)
-        hist /= norm(hist) + eps
+        # eps = 1e-7
+        # hist /= hist.sum() + eps
+        # hist = np.sqrt(hist)
+        # hist /= norm(hist) + eps
 
         samples.append(hist)
     return np.float32(samples)
@@ -198,14 +196,12 @@ if __name__ == '__main__':
     digits_train = map(deskew, digits_train)
     digits_test = map(deskew, digits_test)
     
-    # for i in xrange(4, 20, 2):
-        # print 'knearest with k', i
-    # print 'training KNearest...'
-    # samples_train = preprocess_simple(digits_train)
-    # samples_test = preprocess_simple(digits_test)
-    # model = KNearest(k=4)
-    # model.train(samples_train, labels_train)
-    # evaluate_model(model, digits_test, samples_test, labels_test)
+    print 'training KNearest...'
+    samples_train = preprocess_simple(digits_train)
+    samples_test = preprocess_simple(digits_test)
+    model = KNearest(k=4)
+    model.train(samples_train, labels_train)
+    evaluate_model(model, digits_test, samples_test, labels_test)
 
     print 'training Random Forest...'
     samples_train = preprocess_hog(digits_train)
@@ -217,11 +213,9 @@ if __name__ == '__main__':
     model.train(samples_train, labels_train)
     evaluate_model(model, digits_test, samples_test, labels_test)
 
-    # print 'training SVM...'
-    # samples_train = preprocess_hog(digits_train)
-    # samples_test = preprocess_hog(digits_test)
-    # model = SVM(C=2.67, gamma=5.383)
-    # model.train(samples_train, labels_train)
-    # evaluate_model(model, digits_test, samples_test, labels_test)
-    # print 'saving SVM as "digits_svm.dat"...'
-    # model.save('digits_svm.dat')
+    print 'training SVM...'
+    samples_train = preprocess_hog(digits_train)
+    samples_test = preprocess_hog(digits_test)
+    model = SVM(C=2.67, gamma=5.383)
+    model.train(samples_train, labels_train)
+    evaluate_model(model, digits_test, samples_test, labels_test)
